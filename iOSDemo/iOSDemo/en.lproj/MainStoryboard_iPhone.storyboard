@@ -104,10 +104,10 @@
                     <connections>
                         <outlet property="createButton" destination="3wz-yh-oI8" id="yOy-mh-QDo"/>
                         <outlet property="emailField" destination="KP3-tk-yku" id="LEY-d2-CqE"/>
-                        <outlet property="errorsLabel" destination="H7h-GW-hDp" id="9vx-dQ-Bjm"/>
                         <outlet property="firstNameField" destination="KgD-rA-yvE" id="ynZ-lB-Lgq"/>
                         <outlet property="lastNameField" destination="YEx-6Y-yyD" id="ZaH-VO-cDN"/>
                         <outlet property="reEmailField" destination="gVn-er-ogY" id="D48-rD-Ysx"/>
+                        <outlet property="statusLabel" destination="H7h-GW-hDp" id="3XY-3D-Hwd"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="4" sceneMemberID="firstResponder"/>
@@ -120,10 +120,10 @@
             <relationships>
                 <relationship kind="outlet" name="createButton" candidateClass="UIButton"/>
                 <relationship kind="outlet" name="emailField" candidateClass="UITextField"/>
-                <relationship kind="outlet" name="errorsLabel" candidateClass="UILabel"/>
                 <relationship kind="outlet" name="firstNameField" candidateClass="UITextField"/>
                 <relationship kind="outlet" name="lastNameField" candidateClass="UITextField"/>
                 <relationship kind="outlet" name="reEmailField" candidateClass="UITextField"/>
+                <relationship kind="outlet" name="statusLabel" candidateClass="UILabel"/>
             </relationships>
         </class>
         <class className="NSLayoutConstraint" superclassName="NSObject">

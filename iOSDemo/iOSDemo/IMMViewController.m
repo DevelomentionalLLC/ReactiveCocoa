@@ -8,32 +8,25 @@
 
 #import "IMMViewController.h"
 #import "NSObject+RAC.h"
-
-#define RAC_FANCY - (void)setObject:(id)obj forKeyedSubscript:(id<NSCopying>)key { \
-	[self rac_deriveProperty:(NSString *) key from:obj]; \
-}
-
-#define RAC(keypath) self[RAC_KEYPATH_SELF(keypath)]
-
-@interface UIButton ()
-@property (nonatomic, strong) RACSubscribable *enabled;
-@end
+#import "RACSubscriptingAssignmentTrampoline.h"
 
 @interface IMMViewController ()
 @property (nonatomic, weak) IBOutlet UITextField *firstNameField;
 @property (nonatomic, weak) IBOutlet UITextField *lastNameField;
 @property (nonatomic, weak) IBOutlet UITextField *emailField;
 @property (nonatomic, weak) IBOutlet UITextField *reEmailField;
-@property (nonatomic, weak) IBOutlet UILabel *errorsLabel;
+@property (nonatomic, weak) IBOutlet UILabel *statusLabel;
 @property (nonatomic, weak) IBOutlet UIButton *createButton;
+@property (nonatomic, assign) BOOL processing;
+@property (nonatomic, strong) NSError *error;
 @end
 
 @implementation IMMViewController
 
-RAC_FANCY
-
 - (void)viewDidLoad {
     [super viewDidLoad];
+
+	srand(time(NULL));
 
 	RACSubscribable *allEntriesValid = [RACSubscribable combineLatest:@[ self.firstNameField.rac_textSubscribable, self.lastNameField.rac_textSubscribable, self.emailField.rac_textSubscribable, self.reEmailField.rac_textSubscribable ] reduce:^(RACTuple *xs) {
 		NSString *firstName = xs[0];
@@ -43,19 +36,85 @@ RAC_FANCY
 		return @(firstName.length > 0 && lastName.length > 0 && email.length > 0 && reEmail.length > 0 && [email isEqualToString:reEmail]);
 	}];
 
-	RAC(self.createButton.enabled) = allEntriesValid;
-
-	UIColor *defaultButtonTitleColor = self.createButton.titleLabel.textColor;
-	[self.createButton.rac setTitleColor:(id)[allEntriesValid select:^(NSNumber *x) {
-		return x.boolValue ? defaultButtonTitleColor : [UIColor redColor];
-	}] forState:UIControlStateNormal];
-
-	self.firstNameField.rac.textColor = (id) [allEntriesValid select:^(NSNumber *x) {
-		return x.boolValue ? defaultButtonTitleColor : [UIColor redColor];
+	RACSubscribable *processing = RACAbleSelf(self.processing);
+	RACSubscribable *notProcessing = [processing select:^(NSNumber *x) {
+		return @(!x.boolValue);
 	}];
 
-	self.firstNameField.rac.font = (id) [allEntriesValid select:^(NSNumber *x) {
-		return x.boolValue ? [UIFont fontWithName:@"Helvetica" size:11.0f] : [UIFont fontWithName:@"Helvetica Bold" size:14.0f];
+	RACSubscribable *buttonEnabled = [RACSubscribable combineLatest:@[ processing, allEntriesValid ] reduce:^(RACTuple *xs) {
+		BOOL processing = [xs[0] boolValue];
+		BOOL valid = [xs[1] boolValue];
+		return @(!processing && valid);
+	}];
+	
+	UIColor *defaultButtonTitleColor = self.createButton.titleLabel.textColor;
+	id buttonTextColor = [buttonEnabled select:^(NSNumber *x) {
+		return x.boolValue ? defaultButtonTitleColor : [UIColor lightGrayColor];
+	}];
+	
+	RACSubscribable *labelColor = [processing select:^(NSNumber *x) {
+		return x.boolValue ? [UIColor lightGrayColor] : [UIColor blackColor];
+	}];
+
+	RACSubscribable *error = RACAbleSelf(self.error);
+
+	[self.createButton.rac setTitleColor:buttonTextColor forState:UIControlStateNormal];
+
+	RAC(self.createButton.enabled) = buttonEnabled;
+
+	RAC(self.firstNameField.textColor) = labelColor;
+	RAC(self.lastNameField.textColor) = labelColor;
+	RAC(self.emailField.textColor) = labelColor;
+	RAC(self.reEmailField.textColor) = labelColor;
+
+	RAC(self.firstNameField.enabled) = notProcessing;
+	RAC(self.lastNameField.enabled) = notProcessing;
+	RAC(self.emailField.enabled) = notProcessing;
+	RAC(self.reEmailField.enabled) = notProcessing;
+
+	RACSubscribable *submit = [self.createButton rac_subscribableForControlEvents:UIControlEventTouchUpInside];
+	RACSubscribable *submitCount = [[RACSubscribable combineLatest:@[ submit, [[processing skip:1] where:^BOOL(id x) { return ![x boolValue]; }] ]] foldWithStart:@0 combine:^(NSNumber *running, id next) {
+		return @(running.integerValue + 1);
+	}];
+
+	RAC(self.statusLabel.hidden) = [submitCount select:^(NSNumber *x) {
+		return @(x.integerValue < 1);
+	}];
+	RAC(self.statusLabel.text) = [error select:^(id x) {
+		return x != nil ? NSLocalizedString(@"An error occurred", @"") : NSLocalizedString(@"You're good!", @"");
+	}];
+	RAC(self.statusLabel.textColor) = [error select:^id(id x) {
+		return x != nil ? [UIColor redColor] : [UIColor greenColor];
+	}];
+
+	[processing subscribeNext:^(NSNumber *x) {
+		[[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:x.boolValue];
+	}];
+
+	self.error = nil;
+	self.processing = NO;
+
+	__weak id weakSelf = self;
+	[submit subscribeNext:^(id _) {
+		IMMViewController *strongSelf = weakSelf;
+		strongSelf.processing = YES;
+		
+		[[[strongSelf doSomeNetworkStuff] finally:^{
+			strongSelf.processing = NO;
+		}] subscribeNext:^(id x) {
+			strongSelf.error = nil;
+		} error:^(NSError *error) {
+			strongSelf.error = error;
+		}];
+	}];
+}
+
+- (RACSubscribable *)doSomeNetworkStuff {
+	return [[[RACSubscribable interval:2.0f] take:1] selectMany:^(id _) {
+		int r = rand() % 2;
+		NSLog(@"%d", r);
+		BOOL success = r;
+		return success ? [RACSubscribable return:[RACUnit defaultUnit]] : [RACSubscribable error:[NSError errorWithDomain:@"" code:0 userInfo:nil]];
 	}];
 }
 

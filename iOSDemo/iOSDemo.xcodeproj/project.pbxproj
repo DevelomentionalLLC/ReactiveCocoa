@@ -26,6 +26,7 @@
 		88FC71C816109DF100F8A774 /* iOSDemoTests.m in Sources */ = {isa = PBXBuildFile; fileRef = 88FC71C716109DF100F8A774 /* iOSDemoTests.m */; };
 		88FC71EF16109E2100F8A774 /* libReactiveCocoa-iOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 88FC71E516109E1100F8A774 /* libReactiveCocoa-iOS.a */; };
 		88FC71F91610B2A300F8A774 /* NSObject+RAC.m in Sources */ = {isa = PBXBuildFile; fileRef = 88FC71F81610B2A300F8A774 /* NSObject+RAC.m */; };
+		88FC7340161148F400F8A774 /* RACSubscriptingAssignmentTrampoline.m in Sources */ = {isa = PBXBuildFile; fileRef = 88FC733F161148F400F8A774 /* RACSubscriptingAssignmentTrampoline.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -93,6 +94,8 @@
 		88FC71D116109E1000F8A774 /* ReactiveCocoa.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = ReactiveCocoa.xcodeproj; path = ../ReactiveCocoaFramework/ReactiveCocoa.xcodeproj; sourceTree = "<group>"; };
 		88FC71F71610B2A300F8A774 /* NSObject+RAC.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "NSObject+RAC.h"; sourceTree = "<group>"; };
 		88FC71F81610B2A300F8A774 /* NSObject+RAC.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "NSObject+RAC.m"; sourceTree = "<group>"; };
+		88FC733E161148F400F8A774 /* RACSubscriptingAssignmentTrampoline.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = RACSubscriptingAssignmentTrampoline.h; sourceTree = "<group>"; };
+		88FC733F161148F400F8A774 /* RACSubscriptingAssignmentTrampoline.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = RACSubscriptingAssignmentTrampoline.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -163,6 +166,8 @@
 				88FC719A16109DF100F8A774 /* Supporting Files */,
 				88FC71F71610B2A300F8A774 /* NSObject+RAC.h */,
 				88FC71F81610B2A300F8A774 /* NSObject+RAC.m */,
+				88FC733E161148F400F8A774 /* RACSubscriptingAssignmentTrampoline.h */,
+				88FC733F161148F400F8A774 /* RACSubscriptingAssignmentTrampoline.m */,
 			);
 			path = iOSDemo;
 			sourceTree = "<group>";
@@ -357,6 +362,7 @@
 				88FC71A416109DF100F8A774 /* IMMAppDelegate.m in Sources */,
 				88FC71B316109DF100F8A774 /* IMMViewController.m in Sources */,
 				88FC71F91610B2A300F8A774 /* NSObject+RAC.m in Sources */,
+				88FC7340161148F400F8A774 /* RACSubscriptingAssignmentTrampoline.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

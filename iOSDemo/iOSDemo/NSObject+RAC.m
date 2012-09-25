@@ -22,6 +22,8 @@
 }
 
 - (void)forwardInvocation:(NSInvocation *)invocation {
+	[invocation retainArguments];
+
 	if ([NSStringFromSelector(invocation.selector) hasPrefix:@"set"] && invocation.methodSignature.numberOfArguments == 3) {
 		const char *argType = [invocation.methodSignature getArgumentTypeAtIndex:2];
 		NSAssert(strcmp(argType, "@") == 0, @"rac proxy only works for object properties.");
@@ -35,6 +37,7 @@
 			[invocation setArgument:&x atIndex:2];
 			[invocation invokeWithTarget:self.object];
 		}];
+		return;
 	}
 
 	for (NSUInteger i = 2; i < invocation.methodSignature.numberOfArguments; i++) {
