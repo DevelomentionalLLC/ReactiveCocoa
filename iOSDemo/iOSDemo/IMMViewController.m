@@ -37,49 +37,55 @@
 	}];
 
 	RACSubscribable *processing = RACAbleSelf(self.processing);
-	RACSubscribable *notProcessing = [processing select:^(NSNumber *x) {
-		return @(!x.boolValue);
-	}];
 
 	RACSubscribable *buttonEnabled = [RACSubscribable combineLatest:@[ processing, allEntriesValid ] reduce:^(RACTuple *xs) {
 		BOOL processing = [xs[0] boolValue];
 		BOOL valid = [xs[1] boolValue];
 		return @(!processing && valid);
 	}];
+
+	RAC(self.createButton.enabled) = buttonEnabled;
 	
 	UIColor *defaultButtonTitleColor = self.createButton.titleLabel.textColor;
 	id buttonTextColor = [buttonEnabled select:^(NSNumber *x) {
 		return x.boolValue ? defaultButtonTitleColor : [UIColor lightGrayColor];
 	}];
+
+	[self.createButton.rac setTitleColor:buttonTextColor forState:UIControlStateNormal];
 	
 	RACSubscribable *labelColor = [processing select:^(NSNumber *x) {
 		return x.boolValue ? [UIColor lightGrayColor] : [UIColor blackColor];
 	}];
-
-	RACSubscribable *error = RACAbleSelf(self.error);
-
-	[self.createButton.rac setTitleColor:buttonTextColor forState:UIControlStateNormal];
-
-	RAC(self.createButton.enabled) = buttonEnabled;
 
 	RAC(self.firstNameField.textColor) = labelColor;
 	RAC(self.lastNameField.textColor) = labelColor;
 	RAC(self.emailField.textColor) = labelColor;
 	RAC(self.reEmailField.textColor) = labelColor;
 
+	RACSubscribable *notProcessing = [processing select:^(NSNumber *x) {
+		return @(!x.boolValue);
+	}];
+	
 	RAC(self.firstNameField.enabled) = notProcessing;
 	RAC(self.lastNameField.enabled) = notProcessing;
 	RAC(self.emailField.enabled) = notProcessing;
 	RAC(self.reEmailField.enabled) = notProcessing;
+
+//	[notProcessing toProperty:RAC_KEYPATH_SELF(self.emailField.enabled) onObject:self];
 
 	RACSubscribable *submit = [self.createButton rac_subscribableForControlEvents:UIControlEventTouchUpInside];
 	RACSubscribable *submitCount = [[RACSubscribable combineLatest:@[ submit, [[processing skip:1] where:^BOOL(id x) { return ![x boolValue]; }] ]] foldWithStart:@0 combine:^(NSNumber *running, id next) {
 		return @(running.integerValue + 1);
 	}];
 
-	RAC(self.statusLabel.hidden) = [submitCount select:^(NSNumber *x) {
+	RAC(self.statusLabel.hidden) = [[submitCount doNext:^(id x) {
+		
+	}] select:^(NSNumber *x) {
 		return @(x.integerValue < 1);
 	}];
+
+	RACSubscribable *error = RACAbleSelf(self.error);
+	
 	RAC(self.statusLabel.text) = [error select:^(id x) {
 		return x != nil ? NSLocalizedString(@"An error occurred", @"") : NSLocalizedString(@"You're good!", @"");
 	}];
@@ -107,10 +113,35 @@
 			strongSelf.error = error;
 		}];
 	}];
+
+
+	[repository updateStatus:^(id x) {
+		[repository updateBranch:^(id x) {
+			
+		}];
+	}];
+
+	[[[repository updateStatus] sequenceNext:^{
+		return [repository updateBranch];
+	}] sequenceNext:^{
+		return [repository pushBranch];
+	}];
+
+	[[[[[error select:^id(id x) {
+
+	}] where:^BOOL(id x) {
+
+	}] foldWithStart:nil combine:^id(id running, id next) {
+
+	}] deliverOn:[RACScheduler backgroundScheduler]] subscribeNext:^(id x) {
+
+	} completed:^{
+
+	}];
 }
 
 - (RACSubscribable *)doSomeNetworkStuff {
-	return [[[RACSubscribable interval:2.0f] take:1] selectMany:^(id _) {
+	return [[[RACSubscribable interval:3.0f] take:1] selectMany:^(id _) {
 		int r = rand() % 2;
 		NSLog(@"%d", r);
 		BOOL success = r;

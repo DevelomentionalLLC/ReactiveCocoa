@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		88C2EFAF1612542C00DFCF7A /* IMMSimpleTest.m in Sources */ = {isa = PBXBuildFile; fileRef = 88C2EFAE1612542C00DFCF7A /* IMMSimpleTest.m */; };
 		88FC719416109DF100F8A774 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88FC719316109DF100F8A774 /* UIKit.framework */; };
 		88FC719616109DF100F8A774 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88FC719516109DF100F8A774 /* Foundation.framework */; };
 		88FC719816109DF100F8A774 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88FC719716109DF100F8A774 /* CoreGraphics.framework */; };
@@ -68,6 +69,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		88C2EFAD1612542C00DFCF7A /* IMMSimpleTest.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IMMSimpleTest.h; sourceTree = "<group>"; };
+		88C2EFAE1612542C00DFCF7A /* IMMSimpleTest.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = IMMSimpleTest.m; sourceTree = "<group>"; };
 		88FC718F16109DF100F8A774 /* iOSDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iOSDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		88FC719316109DF100F8A774 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
 		88FC719516109DF100F8A774 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
@@ -168,6 +171,8 @@
 				88FC71F81610B2A300F8A774 /* NSObject+RAC.m */,
 				88FC733E161148F400F8A774 /* RACSubscriptingAssignmentTrampoline.h */,
 				88FC733F161148F400F8A774 /* RACSubscriptingAssignmentTrampoline.m */,
+				88C2EFAD1612542C00DFCF7A /* IMMSimpleTest.h */,
+				88C2EFAE1612542C00DFCF7A /* IMMSimpleTest.m */,
 			);
 			path = iOSDemo;
 			sourceTree = "<group>";
@@ -363,6 +368,7 @@
 				88FC71B316109DF100F8A774 /* IMMViewController.m in Sources */,
 				88FC71F91610B2A300F8A774 /* NSObject+RAC.m in Sources */,
 				88FC7340161148F400F8A774 /* RACSubscriptingAssignmentTrampoline.m in Sources */,
+				88C2EFAF1612542C00DFCF7A /* IMMSimpleTest.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
