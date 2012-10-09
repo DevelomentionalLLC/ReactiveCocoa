@@ -108,43 +108,9 @@ static NSMutableSet *activeSubscribables() {
 @synthesize name;
 
 + (instancetype)createSubscribable:(RACDisposable * (^)(id<RACSubscriber> subscriber))didSubscribe {
-	RACSubscribable *subscribable = [[self alloc] init];
+	RACSubscribable *subscribable = [[RACSubscribable alloc] init];
 	subscribable.didSubscribe = didSubscribe;
 	return subscribable;
-}
-
-+ (instancetype)generatorWithStart:(id)start next:(id (^)(id x))block {
-	return [self generatorWithScheduler:nil start:start next:block];
-}
-
-+ (instancetype)generatorWithScheduler:(RACScheduler *)scheduler start:(id)start next:(id (^)(id x))block {
-	if (scheduler == nil) scheduler = [RACScheduler backgroundScheduler];
-
-	return [self createSubscribable:^(id<RACSubscriber> subscriber) {
-		__block volatile uint32_t dispose = 0;
-		[scheduler schedule:^{
-			id next = start;
-			while (next != nil && dispose == 0) {
-				[subscriber sendNext:next];
-
-				if (dispose == 0) {
-					next = block != NULL ? block(next) : next;
-				}
-			}
-			
-			// Only send completed if we weren't manually disposed of.
-			// Otherwise we could send a message to subscribers after their
-			// subscription's been disposed which would violate the contract of
-			// subscription + disposal.
-			if (dispose == 0) {
-				[subscriber sendCompleted];
-			}
-		}];
-
-		return [RACDisposable disposableWithBlock:^{
-			OSAtomicOr32Barrier(1, &dispose);
-		}];
-	}];
 }
 
 + (instancetype)return:(id)value {
@@ -206,18 +172,22 @@ static NSMutableSet *activeSubscribables() {
 }
 
 - (void)invalidateGlobalRefIfNoNewSubscribersShowUp {
-	// If no one subscribed in the runloop's pass, then we're free to go. It's
-	// up to the caller to keep us alive if they still want us.
-	[self rac_performBlock:^{
-		BOOL hasSubscribers = YES;
-		@synchronized(self.subscribers) {
-			hasSubscribers = self.subscribers.count > 0;
-		}
-		
-		if(!hasSubscribers) {
-			[self invalidateGlobalRef];
-		}
-	} afterDelay:0];
+	// We might not be on a queue with a runloop. So make sure we do the delay
+	// on the main queue.
+	dispatch_async(dispatch_get_main_queue(), ^{
+		// If no one subscribed in the runloop's pass, then we're free to go.
+		// It's up to the caller to keep us alive if they still want us.
+		[self rac_performBlock:^{
+			BOOL hasSubscribers = YES;
+			@synchronized(self.subscribers) {
+				hasSubscribers = self.subscribers.count > 0;
+			}
+
+			if (!hasSubscribers) {
+				[self invalidateGlobalRef];
+			}
+		} afterDelay:0];
+	});
 }
 
 - (void)invalidateGlobalRef {

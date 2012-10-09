@@ -8,11 +8,16 @@
 
 #import "RACAsyncSubject.h"
 #import "RACSubscriber.h"
+#import "RACDisposable.h"
 
 @interface RACAsyncSubject ()
-@property (strong) id lastValue;
-@property (assign) BOOL hasCompletedAlready;
-@property (strong) NSError *error;
+
+// These should only be read or written while synchronized on self.
+@property (nonatomic, strong) id lastValue;
+@property (nonatomic, assign) BOOL hasLastValue;
+@property (nonatomic, assign) BOOL hasCompletedAlready;
+@property (nonatomic, strong) NSError *error;
+
 @end
 
 
@@ -22,11 +27,16 @@
 #pragma mark RACSubscribable
 
 - (RACDisposable *)subscribe:(id<RACSubscriber>)subscriber {
-	RACDisposable * disposable = [super subscribe:subscriber];
-	if(self.hasCompletedAlready) {
-		[self sendCompleted];
-	} else if(self.error != nil) {
-		[self sendError:self.error];
+	RACDisposable *disposable = [super subscribe:subscriber];
+
+	@synchronized (self) {
+		if (self.hasCompletedAlready) {
+			[self sendCompleted];
+			[disposable dispose];
+		} else if (self.error != nil) {
+			[self sendError:self.error];
+			[disposable dispose];
+		}
 	}
 	
 	return disposable;
@@ -36,28 +46,27 @@
 #pragma mark RACSubscriber
 
 - (void)sendNext:(id)value {
-	self.lastValue = value;
+	@synchronized (self) {
+		self.lastValue = value;
+		self.hasLastValue = YES;
+	}
 }
 
 - (void)sendCompleted {
-	self.hasCompletedAlready = YES;
-	
-	[super sendNext:self.lastValue];
+	@synchronized (self) {
+		self.hasCompletedAlready = YES;
+		if (self.hasLastValue) [super sendNext:self.lastValue];
+	}
 	
 	[super sendCompleted];
 }
 
 - (void)sendError:(NSError *)e {
-	self.error = e;
+	@synchronized (self) {
+		self.error = e;
+	}
 	
 	[super sendError:e];
 }
-
-
-#pragma mark API
-
-@synthesize lastValue;
-@synthesize hasCompletedAlready;
-@synthesize error;
 
 @end
