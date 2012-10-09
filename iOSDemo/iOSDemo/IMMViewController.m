@@ -7,16 +7,26 @@
 //
 
 #import "IMMViewController.h"
-#import "NSObject+RAC.h"
-#import "RACSubscriptingAssignmentTrampoline.h"
+
+// Our mission: create a form for the user to fill out. It should only allow
+// submission if the form is valid. A form is valid if the user's entered a
+// value for each field, and if the email and re-enter email fields match.
+// 
+// We want to minimize our statefulness for our own sanity. This means any
+// non-essential state should be derived and driven entirely by the essential
+// state.
 
 @interface IMMViewController ()
+// All user input is essential state. How else could we get it?
 @property (nonatomic, weak) IBOutlet UITextField *firstNameField;
 @property (nonatomic, weak) IBOutlet UITextField *lastNameField;
 @property (nonatomic, weak) IBOutlet UITextField *emailField;
 @property (nonatomic, weak) IBOutlet UITextField *reEmailField;
 @property (nonatomic, weak) IBOutlet UILabel *statusLabel;
 @property (nonatomic, weak) IBOutlet UIButton *createButton;
+
+// `processing` and `error` are both essential even though they're not input by
+// the user. They decide what state our form is in.
 @property (nonatomic, assign) BOOL processing;
 @property (nonatomic, strong) NSError *error;
 @end
@@ -28,39 +38,48 @@
 
 	srand(time(NULL));
 
-	RACSubscribable *allEntriesValid = [RACSubscribable combineLatest:@[ self.firstNameField.rac_textSubscribable, self.lastNameField.rac_textSubscribable, self.emailField.rac_textSubscribable, self.reEmailField.rac_textSubscribable ] reduce:^(RACTuple *xs) {
+	// Are all entries valid? This is derived entirely from the values of our UI.
+	RACSubscribable *formValid = [RACSubscribable combineLatest:@[ self.firstNameField.rac_textSubscribable, self.lastNameField.rac_textSubscribable, self.emailField.rac_textSubscribable, self.reEmailField.rac_textSubscribable ] reduce:^(RACTuple *xs) {
 		NSString *firstName = xs[0];
 		NSString *lastName = xs[1];
 		NSString *email = xs[2];
 		NSString *reEmail = xs[3];
-		return @(firstName.length > 0 && lastName.length > 0 && email.length > 0 && reEmail.length > 0 && [email isEqualToString:reEmail]);
+		return @(firstName.length > 0 && lastName.length > 0 && email.length > 0 && reEmail.length > 0 && [email isEqual:reEmail]);
 	}];
 
-	RACSubscribable *processing = RACAbleSelf(self.processing);
+	// Get a subscribable from key-value observing the `processing` property.
+	RACSubscribable *processing = RACAble(self.processing);
 
-	RACSubscribable *buttonEnabled = [RACSubscribable combineLatest:@[ processing, allEntriesValid ] reduce:^(RACTuple *xs) {
+	// The button's enabledness is derived from whether we're processing and
+	// whether our form is valid.
+	RACSubscribable *buttonEnabled = [RACSubscribable combineLatest:@[ processing, formValid ] reduce:^(RACTuple *xs) {
 		BOOL processing = [xs[0] boolValue];
 		BOOL valid = [xs[1] boolValue];
 		return @(!processing && valid);
 	}];
 
+	// The button's enabledness is driven by the `buttonEnabled` subscribable.
 	RAC(self.createButton.enabled) = buttonEnabled;
-	
+
+	// The button's title color is driven by its enabledness.
 	UIColor *defaultButtonTitleColor = self.createButton.titleLabel.textColor;
-	id buttonTextColor = [buttonEnabled select:^(NSNumber *x) {
+	RACSubscribable *buttonTextColor = [buttonEnabled select:^(NSNumber *x) {
 		return x.boolValue ? defaultButtonTitleColor : [UIColor lightGrayColor];
 	}];
 
-	[self.createButton.rac setTitleColor:buttonTextColor forState:UIControlStateNormal];
-	
-	RACSubscribable *labelColor = [processing select:^(NSNumber *x) {
+	// Update the title color every our text color subscribable changes.
+	[self.createButton rac_subscribeSelector:@selector(setTitleColor:forState:) withObjects:buttonTextColor, @(UIControlStateNormal)];
+
+	// Our fields' text color and enabledness is derived from whether we're
+	// processing.
+	RACSubscribable *fieldTextColor = [processing select:^(NSNumber *x) {
 		return x.boolValue ? [UIColor lightGrayColor] : [UIColor blackColor];
 	}];
 
-	RAC(self.firstNameField.textColor) = labelColor;
-	RAC(self.lastNameField.textColor) = labelColor;
-	RAC(self.emailField.textColor) = labelColor;
-	RAC(self.reEmailField.textColor) = labelColor;
+	RAC(self.firstNameField.textColor) = fieldTextColor;
+	RAC(self.lastNameField.textColor) = fieldTextColor;
+	RAC(self.emailField.textColor) = fieldTextColor;
+	RAC(self.reEmailField.textColor) = fieldTextColor;
 
 	RACSubscribable *notProcessing = [processing select:^(NSNumber *x) {
 		return @(!x.boolValue);
@@ -71,31 +90,36 @@
 	RAC(self.emailField.enabled) = notProcessing;
 	RAC(self.reEmailField.enabled) = notProcessing;
 
-//	[notProcessing toProperty:RAC_KEYPATH_SELF(self.emailField.enabled) onObject:self];
-
 	RACSubscribable *submit = [self.createButton rac_subscribableForControlEvents:UIControlEventTouchUpInside];
-	RACSubscribable *submitCount = [[RACSubscribable combineLatest:@[ submit, [[processing skip:1] where:^BOOL(id x) { return ![x boolValue]; }] ]] foldWithStart:@0 combine:^(NSNumber *running, id next) {
+	// The first value from `processing` will be us setting it to NO below. So
+	// skip that value and then let us know when processing ends.
+	RACSubscribable *submissionEnded = [[processing
+		skip:1]
+		where:^ BOOL (NSNumber *x) {
+			return !x.boolValue;
+		}];
+	// The submit count increments after the button's been clicked and we're
+	// done processing.
+	RACSubscribable *submitCount = [[RACSubscribable combineLatest:@[ submit, submissionEnded ]] scanWithStart:@0 combine:^(NSNumber *running, id _) {
 		return @(running.integerValue + 1);
 	}];
 
-	RAC(self.statusLabel.hidden) = [[submitCount doNext:^(id x) {
-		
-	}] select:^(NSNumber *x) {
+	// The status label only shows up after the first completed submission.
+	RAC(self.statusLabel.hidden) = [submitCount select:^(NSNumber *x) {
 		return @(x.integerValue < 1);
 	}];
 
-	RACSubscribable *error = RACAbleSelf(self.error);
-	
+	RACSubscribable *error = RACAble(self.error);
+
+	// Status label text and color are driven by whether we got an error.
 	RAC(self.statusLabel.text) = [error select:^(id x) {
-		return x != nil ? NSLocalizedString(@"An error occurred", @"") : NSLocalizedString(@"You're good!", @"");
+		return x != nil ? NSLocalizedString(@"An error occurred!", @"") : NSLocalizedString(@"You're good!", @"");
 	}];
-	RAC(self.statusLabel.textColor) = [error select:^id(id x) {
+	RAC(self.statusLabel.textColor) = [error select:^(id x) {
 		return x != nil ? [UIColor redColor] : [UIColor greenColor];
 	}];
 
-	[processing subscribeNext:^(NSNumber *x) {
-		[[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:x.boolValue];
-	}];
+	RAC(UIApplication.sharedApplication, networkActivityIndicatorVisible) = processing;
 
 	self.error = nil;
 	self.processing = NO;
@@ -113,38 +137,11 @@
 			strongSelf.error = error;
 		}];
 	}];
-
-
-	[repository updateStatus:^(id x) {
-		[repository updateBranch:^(id x) {
-			
-		}];
-	}];
-
-	[[[repository updateStatus] sequenceNext:^{
-		return [repository updateBranch];
-	}] sequenceNext:^{
-		return [repository pushBranch];
-	}];
-
-	[[[[[error select:^id(id x) {
-
-	}] where:^BOOL(id x) {
-
-	}] foldWithStart:nil combine:^id(id running, id next) {
-
-	}] deliverOn:[RACScheduler backgroundScheduler]] subscribeNext:^(id x) {
-
-	} completed:^{
-
-	}];
 }
 
 - (RACSubscribable *)doSomeNetworkStuff {
 	return [[[RACSubscribable interval:3.0f] take:1] selectMany:^(id _) {
-		int r = rand() % 2;
-		NSLog(@"%d", r);
-		BOOL success = r;
+		BOOL success = rand() % 2;
 		return success ? [RACSubscribable return:[RACUnit defaultUnit]] : [RACSubscribable error:[NSError errorWithDomain:@"" code:0 userInfo:nil]];
 	}];
 }
