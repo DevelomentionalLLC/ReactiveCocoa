@@ -16,6 +16,4 @@
 
 - (void)setObjectValue:(id)objectValue andIntegerValue:(NSInteger)integerValue;
 
-- (void)setObjectValue:(id)objectValue andIntegerValue:(NSInteger)integerValue;
-
 @end
